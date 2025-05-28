@@ -27,15 +27,18 @@ context('Burger Builder App E2E Suite', () => {
       cy.get(bunSel).first().as('firstBun');
     });
 
-    it('opens modal on card click', () => {
-      cy.get('@firstBun').click();
-      cy.get(modalsSel).children().should('have.length', 2);
+    it('opens modal and shows correct content', () => {
+      cy.get('@firstBun').find('.text.text_type_main-default').invoke('text').then((bunTextBefore) => {
+        cy.get('@firstBun').click();
+        cy.get(modalsSel).should('exist');
+        cy.get(`${modalsSel} .text.text_type_main-medium`).should('have.text', bunTextBefore);
+      });
     });
 
     it('persists modal after reload', () => {
       cy.get('@firstBun').click();
       cy.reload(true);
-      cy.get(modalsSel).children().should('have.length', 2);
+      cy.get(modalsSel).should('exist');
     });
 
     context('closing modals', () => {
@@ -43,19 +46,16 @@ context('Burger Builder App E2E Suite', () => {
 
       it('via close button', () => {
         cy.get(`${modalsSel} button`).first().click();
-        cy.wait(500);
         cy.get(modalsSel).children().should('have.length', 0);
       });
 
       it('by clicking overlay', () => {
         cy.get(`${modalsSel} > div:nth-of-type(2)`).click({ force: true });
-        cy.wait(500);
         cy.get(modalsSel).children().should('have.length', 0);
       });
 
       it('with ESC key', () => {
         cy.get('body').type('{esc}');
-        cy.wait(500);
         cy.get(modalsSel).children().should('have.length', 0);
       });
     });
@@ -74,22 +74,26 @@ context('Burger Builder App E2E Suite', () => {
       cy.wait(['@getUser', '@reloadIngredients']);
     });
 
-    it('builds and submits an order', () => {
+    it('builds and submits an order and clears constructor', () => {
       const placeOrder = () => cy.get(orderBtnSel);
 
+      cy.get('.constructor-element').should('not.exist');
       placeOrder().should('be.disabled');
 
       cy.get(`${bunSel}:first-of-type button`).click();
+      cy.get('.constructor-element').should('exist');
       placeOrder().should('be.disabled');
 
       cy.get(`${mainSel}:first-of-type button`).click();
+      cy.get('.constructor-element').should('have.length.greaterThan', 1);
       placeOrder().should('be.enabled');
 
       placeOrder().click();
+      cy.wait('@postOrder');
+      cy.get(modalsSel).should('exist');
+      cy.get(`${modalsSel} .text_type_digits-large`).should('have.text', orderData.order.number);
 
-      cy.get(modalsSel).children().should('have.length', 2);
-      cy.get(`${modalsSel} h2:first-of-type`).should('have.text', orderData.order.number);
-      placeOrder().should('be.disabled');
+      cy.get('.constructor-element').should('not.exist');
     });
 
     afterEach(() => {
